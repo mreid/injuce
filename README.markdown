@@ -12,7 +12,19 @@ Set up
 
 * [Clojure][] - 
 
-* [OpenCSV][] - Download version 1.8 from [here][opencsv] and put `opencsv-1.8.jar` in `./lib/`
+* [Incanter][]
 
 [clojure]: http://clojure.org/
-[opencsv]: http://opencsv.sourceforge.net/
+[incanter]: http://incanter.org/
+
+## Incanter Script ##
+
+The programs here will be run using the `clj` script that comes with Incanter. This script sets up the classpath for Incanter.
+
+To run a program in this package, call it as follows:
+
+	$ ../incanter/bin/clj FILENAME.clj
+
+where `../incanter` should be replaced with whatever path gets you to your installation of Incanter.
+
+I'll aim to make this easier in the future.
