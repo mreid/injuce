@@ -48,7 +48,7 @@
 ; and each v_i a float.
 ;
 (ns sgd)
-(import '(java.io BufferedReader))
+(import '(java.io FileReader BufferedReader))
 
 ; Convert a file to a lazy sequence of lines.
 ; (-> "sgd.clj" FileReader. BufferedReader. line-seq)
@@ -87,17 +87,21 @@
 	(let [lambda (:lambda model)
 		  t      (:step   model)
 		  wt     (:w      model)
+		  errors (:errors model)
 		  y      (:y      example)
 		  x      (:x      example)
+		  error  (< (margin wt x y) 1)
 		
 		  eta    (/ 1 (* lambda t))
 		  wt1    (scale (- 1 (* eta lambda)) wt) 
 		  neww   (project
-					(if (< 1 (margin wt x y)) (add wt1 (scale y x)) wt1)
+					(if error (add wt1 (scale y x)) wt1)
 					(/ 1 (Math/sqrt lambda)))]
-		{:w      neww
-		 :lambda lambda
-		 :step   (inc t)} ))
+
+		{ :w      neww, 
+		  :lambda lambda, 
+		  :step (inc t), 
+		  :errors (if error (inc errors) errors)} ))
 
 (defn train
 	"Returns a model trained from the initial model on the given examples"
@@ -117,13 +121,22 @@
 	"Returns a map {:y label, :x sparse-feature-vector} parsed from given line"
 	[line]
 	(let [ [_ label features] (re-matches #"^(-?\d+)(.*)$" line) ]
-		{:y label, :x (parse-features features)}))
-	
+		{:y (Float/parseFloat label), :x (parse-features features)}))
+
 (defn main
 	"Call to run the example"
 	[]
-;	(train 
-;		{:lambda 0.1, :step 1, :w {}} 
-	(print (map parse (-> *in* BufferedReader. line-seq))))
+	(let [start 	{:lambda 0.1, :step 1, :w {}, :errors 0} 
+		  examples 	(map parse (-> *in* BufferedReader. line-seq))
+		  model		(train start examples) ]
+		[(count (:w model)), (:errors model)] ))
 
-(main)
+;(with-open
+;	[file (BufferedReader. (FileReader.  "test.data"))]
+;	(prn (train  {:lambda 0.1, :step 1, :w {}} (map parse (line-seq file)))))
+
+; Time how long it takes to parse input
+;(prn (time (count (map parse (-> *in* BufferedReader. line-seq)))))
+
+(set! *warn-on-reflection* true)
+(prn (time (main)))
