@@ -47,6 +47,8 @@
 ; where y is either 1 or -1, each f_i is an integer representing a feature index
 ; and each v_i a float.
 ;
+; The suggested value of lambda for this dataset is 0.0001.
+
 (ns sgd)
 (import '(java.io FileReader BufferedReader))
 
@@ -97,11 +99,11 @@
 		  neww   (project
 					(if error (add wt1 (scale y x)) wt1)
 					(/ 1 (Math/sqrt lambda)))]
-
+		(do (if (== (mod t 100) 0) (prn t errors (norm wt) (margin wt x y)))
 		{ :w      neww, 
 		  :lambda lambda, 
 		  :step (inc t), 
-		  :errors (if error (inc errors) errors)} ))
+		  :errors (if error (inc errors) errors)} )))
 
 (defn train
 	"Returns a model trained from the initial model on the given examples"
@@ -126,7 +128,7 @@
 (defn main
 	"Call to run the example"
 	[]
-	(let [start 	{:lambda 0.1, :step 1, :w {}, :errors 0} 
+	(let [start 	{:lambda 0.0001, :step 1, :w {}, :errors 0} 
 		  examples 	(map parse (-> *in* BufferedReader. line-seq))
 		  model		(train start examples) ]
 		[(count (:w model)), (:errors model)] ))
