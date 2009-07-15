@@ -99,11 +99,10 @@
 		  neww   (project
 					(if error (add wt1 (scale y x)) wt1)
 					(/ 1 (Math/sqrt lambda)))]
-		(do (if (== (mod t 100) 0) (prn t errors (norm wt) (margin wt x y)))
 		{ :w      neww, 
 		  :lambda lambda, 
 		  :step (inc t), 
-		  :errors (if error (inc errors) errors)} )))
+		  :errors (if error (inc errors) errors)} ))
 
 (defn train
 	"Returns a model trained from the initial model on the given examples"
@@ -137,8 +136,9 @@
 ;	[file (BufferedReader. (FileReader.  "test.data"))]
 ;	(prn (train  {:lambda 0.1, :step 1, :w {}} (map parse (line-seq file)))))
 
-; Time how long it takes to parse input
-;(prn (time (count (map parse (-> *in* BufferedReader. line-seq)))))
 
 (set! *warn-on-reflection* true)
-(prn (time (main)))
+;(prn (time (main)))
+
+; Time how long it takes to parse input
+(prn (time (count (map parse (-> *in* BufferedReader. line-seq)))))
