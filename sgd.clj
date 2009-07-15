@@ -52,21 +52,14 @@
 (ns sgd)
 (import '(java.io FileReader BufferedReader))
 
-; Convert a file to a lazy sequence of lines.
-; (-> "sgd.clj" FileReader. BufferedReader. line-seq)
-
+;; ---- Sparse Vector Operations ----
 (defn add
 	"Returns the sparse sum of two sparse vectors x y"
 	[x y] (merge-with + x y))
 
 (defn inner
 	"Computes the inner product of the sparse vectors (hashes) x and y"
-	[x y]
-	(reduce + (map #(* (get x % 0) (get y % 0)) (keys y))))
-
-(defn margin
-	"Returns the margin of the parameter vector w on instance x with label y"
-	[w x y] (* y (inner w x)))
+	[x y] (reduce + (map #(* (get x % 0) (get y % 0)) (keys y))))
 
 (defn norm
 	"Returns the l_2 norm of the (sparse) vector v"
@@ -78,42 +71,15 @@
 
 (defn project
 	"Returns the projection of a parameter vector w onto the ball of radius r"
-	[w r]
-	(let [w-norm (norm w)]
-		(scale (if (> w-norm r) (/ r w-norm) 1) w)))
+	[w r] (scale (min (/ r (norm w)) 1) w))
 
-(defn update
-	"Returns an updated model by taking the last model, the next training 
-	 and applying the Pegasos update step"
-	[model example]
-	(let [lambda (:lambda model)
-		  t      (:step   model)
-		  wt     (:w      model)
-		  errors (:errors model)
-		  y      (:y      example)
-		  x      (:x      example)
-		  error  (< (margin wt x y) 1)
-		
-		  eta    (/ 1 (* lambda t))
-		  wt1    (scale (- 1 (* eta lambda)) wt) 
-		  neww   (project
-					(if error (add wt1 (scale y x)) wt1)
-					(/ 1 (Math/sqrt lambda)))]
-		{ :w      neww, 
-		  :lambda lambda, 
-		  :step (inc t), 
-		  :errors (if error (inc errors) errors)} ))
-
-(defn train
-	"Returns a model trained from the initial model on the given examples"
-	[initial examples]
-	(reduce update initial examples))
+;; ---- Parsing ----
 
 (defn parse-feature 
 	[string] 
 	(let [ [_ key val] (re-matches #"(\d+):(.*)" string)]
 		[(Integer/parseInt key) (Float/parseFloat val)]))
-	
+
 (defn parse-features
 	[string]
 	(into {} (map parse-feature (re-seq #"[^\s]+" string))))
@@ -124,21 +90,65 @@
 	(let [ [_ label features] (re-matches #"^(-?\d+)(.*)$" line) ]
 		{:y (Float/parseFloat label), :x (parse-features features)}))
 
+;; ---- Training ----
+(defn hinge-loss
+	"Returns the hinge loss of the weight vector w on the given example"
+	[w example] (max 0 (- 1 (* (:y example) (inner w (:x example))))))
+	
+(defn correct
+	"Returns a corrected version of the weight vector w"
+	[w example t lambda]
+	(let [x   (:x example)
+		  y   (:y example)
+		  w1  (scale (- 1 (/ 1 t)) w)
+		  eta (/ 1 (* lambda t))
+		  r   (/ 1 (Math/sqrt lambda))]
+		(project (add w1 (scale (* eta y) x)) r)))
+
+(defn report
+	"Prints some statistics about the given model at the specified interval"
+	[model interval]
+	(if (zero? (mod (:step model) interval))
+		(let [t      (:step model)
+			  size   (count (keys (:w model)))
+			  errors (:errors model) ]
+			(println "Updates:" t 
+				 "\t Feature count for w =" size 
+				 "\t Total errors =" errors 
+				 "\t Running accuracy =" (/ (float errors) t)))))
+
+(defn update
+	"Returns an updated model by taking the last model, the next training 
+	 and applying the Pegasos update step"
+	[model example]
+	(let [lambda (:lambda model)
+		  t      (:step   model)
+		  w      (:w      model)
+		  errors (:errors model)
+		  error  (> (hinge-loss w example) 0)]
+		(do 
+			(report model 100)
+			{ :w      (if error (correct w example t lambda) w), 
+			  :lambda lambda, 
+			  :step   (inc t), 
+			  :errors (if error (inc errors) errors)} )))
+
+(defn train
+	"Returns a model trained from the initial model on the given examples"
+	[initial examples]
+	(reduce update initial examples))
+
+;; ---- Main method ----
+
 (defn main
 	"Call to run the example"
 	[]
 	(let [start 	{:lambda 0.0001, :step 1, :w {}, :errors 0} 
-		  examples 	(map parse (-> *in* BufferedReader. line-seq))
-		  model		(train start examples) ]
-		[(count (:w model)), (:errors model)] ))
-
-;(with-open
-;	[file (BufferedReader. (FileReader.  "test.data"))]
-;	(prn (train  {:lambda 0.1, :step 1, :w {}} (map parse (line-seq file)))))
-
+		  examples 	(map parse (-> *in* BufferedReader. line-seq)) ]
+		(report (train start examples) 1)))
 
 (set! *warn-on-reflection* true)
-;(prn (time (main)))
+(prn (time (main)))
 
-; Time how long it takes to parse input
-(prn (time (count (map parse (-> *in* BufferedReader. line-seq)))))
+; Time how long it takes just to parse input
+;(prn (time (count (map parse (-> *in* BufferedReader. line-seq)))))
