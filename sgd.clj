@@ -49,25 +49,42 @@
 ;
 ; The suggested value of lambda for this dataset is 0.0001.
 
-(ns sgd)
-(import '(java.io FileReader BufferedReader))
+(ns sgd
+	(:import 
+		(java.io FileReader BufferedReader)
+		(cern.colt.matrix.tfloat.impl SparseFloatMatrix1D))
+		(cern.jet.math.tfloat FloatFunctions))
 
 ;; ---- Sparse Vector Operations ----
-(defn add
-	"Returns the sparse sum of two sparse vectors x y"
-	[x y] (merge-with + x y))
+(def *max-features* 50000)
 
-(defn inner
-	"Computes the inner product of the sparse vectors (hashes) x and y"
-	[x y] (reduce + (map #(* (get x % 0) (get y % 0)) (keys y))))
+(defn create
+	"Returns a sparse vector created from a map of int/float pairs"
+	[m] (let [v (SparseFloatMatrix1D. *max-features*)] 
+			(do (map #(. v set (key %) (val %)) m)
+			v)))
+
+;(defn add
+;	"Returns the sparse sum of two sparse vectors x y"
+;	[x y] (merge-with + x y))
+
+(defn add [x y] (. (. x copy) assign y FloatFunctions/plus) )
+
+;(defn inner
+;	"Computes the inner product of the sparse vectors (hashes) x and y"
+;	[x y] (reduce + (map #(* (get x % 0) (get y % 0)) (keys y))))
+
+(defn inner [x y] (. x zDotProduct y))
 
 (defn norm
 	"Returns the l_2 norm of the (sparse) vector v"
 	[v] (Math/sqrt (inner v v)))
 
-(defn scale
-	"Returns the scalar product of the sparse vector v by the scalar a"
-	[a v] (zipmap (keys v) (map * (vals v) (repeat a))))
+(defn scale [a v] (. (. v copy) assign (FloatFunctions/mult a)))
+
+;(defn scale
+;	"Returns the scalar product of the sparse vector v by the scalar a"
+;	[a v] (zipmap (keys v) (map * (vals v) (repeat a))))
 
 (defn project
 	"Returns the projection of a parameter vector w onto the ball of radius r"
