@@ -49,20 +49,26 @@
 ;
 ; The suggested value of lambda for this dataset is 0.0001.
 
-(ns sgd
-	(:import 
+(ns sgd (:import 
 		(java.io FileReader BufferedReader)
-		(cern.colt.matrix.tfloat.impl SparseFloatMatrix1D))
-		(cern.jet.math.tfloat FloatFunctions))
+		(cern.colt.matrix.tfloat.impl SparseFloatMatrix1D)
+		(cern.jet.math.tfloat FloatFunctions)
+		(edu.emory.mathcs.utils ConcurrencyUtils)))
 
 ;; ---- Sparse Vector Operations ----
-(def *max-features* 50000)
+(def *max-features* 47153)
 
 (defn create
-	"Returns a sparse vector created from a map of int/float pairs"
-	[m] (let [v (SparseFloatMatrix1D. *max-features*)] 
-			(do (map #(. v set (key %) (val %)) m)
+	"Returns a sparse vector created from a list of int/float pairs [k v]"
+	[m] 
+	(let [v (SparseFloatMatrix1D. *max-features*)] 
+		(do 
+			(doseq [[i f] m] (.set v i f))
 			v)))
+			
+(defn cardinality
+	"Returns the number of non-zero elements in the given sparse vector"
+	[v] (. v cardinality))
 
 ;(defn add
 ;	"Returns the sparse sum of two sparse vectors x y"
@@ -88,7 +94,9 @@
 
 (defn project
 	"Returns the projection of a parameter vector w onto the ball of radius r"
-	[w r] (scale (min (/ r (norm w)) 1) w))
+	[w r] 
+	(let [n (norm w)]
+		(if (> n 0) (scale (min (/ r (norm w)) 1) w)) w))
 
 ;; ---- Parsing ----
 
@@ -99,7 +107,8 @@
 
 (defn parse-features
 	[string]
-	(into {} (map parse-feature (re-seq #"[^\s]+" string))))
+	
+	(create (map parse-feature (re-seq #"[^\s]+" string))))
 
 (defn parse
 	"Returns a map {:y label, :x sparse-feature-vector} parsed from given line"
@@ -127,7 +136,7 @@
 	[model interval]
 	(if (zero? (mod (:step model) interval))
 		(let [t      (:step model)
-			  size   (count (keys (:w model)))
+			  size   (cardinality (:w model))
 			  errors (:errors model) ]
 			(binding [*out* *err*]
 				(println "Step:" t 
@@ -161,12 +170,13 @@
 (defn main
 	"Trains a model from the examples and prints out its weights"
 	[]
-	(let [start 	{:lambda 0.0001, :step 1, :w {}, :errors 0} 
+	(let [start 	{:lambda 0.0001, :step 1, :w (create {}), :errors 0} 
 		  examples 	(map parse (-> *in* BufferedReader. line-seq)) 
 		  model     (train start examples)]
-		(println (map #(str (key %) ":" (val %)) (:w model)))))
+		(println (:w model))))
 
 (set! *warn-on-reflection* true)
+(ConcurrencyUtils/setNumberOfThreads 1) ; Done to stop time wasted in Futures
 (println (time (main)))
 
 ; Time how long it takes just to parse input
