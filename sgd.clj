@@ -123,16 +123,17 @@
 		(project (add w1 (scale (* eta y) x)) r)))
 
 (defn report
-	"Prints some statistics about the given model at the specified interval"
+	"Prints stats about the given model to STDERR at the specified interval"
 	[model interval]
 	(if (zero? (mod (:step model) interval))
 		(let [t      (:step model)
 			  size   (count (keys (:w model)))
 			  errors (:errors model) ]
-			(println "Updates:" t 
-				 "\t Feature count for w =" size 
-				 "\t Total errors =" errors 
-				 "\t Running accuracy =" (/ (float errors) t)))))
+			(binding [*out* *err*]
+				(println "Step:" t 
+				 "\t Features in w =" size 
+				 "\t Errors =" errors 
+				 "\t Accuracy =" (/ (float errors) t))))))
 
 (defn update
 	"Returns an updated model by taking the last model, the next training 
@@ -158,14 +159,15 @@
 ;; ---- Main method ----
 
 (defn main
-	"Call to run the example"
+	"Trains a model from the examples and prints out its weights"
 	[]
 	(let [start 	{:lambda 0.0001, :step 1, :w {}, :errors 0} 
-		  examples 	(map parse (-> *in* BufferedReader. line-seq)) ]
-		(report (train start examples) 1)))
+		  examples 	(map parse (-> *in* BufferedReader. line-seq)) 
+		  model     (train start examples)]
+		(println (map #(str (key %) ":" (val %)) (:w model)))))
 
 (set! *warn-on-reflection* true)
-(prn (time (main)))
+(println (time (main)))
 
 ; Time how long it takes just to parse input
 ;(prn (time (count (map parse (-> *in* BufferedReader. line-seq)))))
