@@ -14,7 +14,7 @@
 ;; where U is m x k and V is n x k for k << min(m,n).
 ;;
 ;; The rows of the matrix U are the k-dimensional vectors u_i, for i=1...m and
-;; similarly v_i for V.   
+;; similarly v_i for V.
 ;;
 ;; Probabilistic PCA assumes each entry in Y is some noisy transformation of
 ;; unknown, latent variables. That is:
@@ -52,32 +52,45 @@
    (:import 
       (java.io FileReader BufferedReader)
       (cern.colt.matrix.tdouble.algo DenseDoubleAlgebra SparseDoubleAlgebra)
-      (cern.colt.matrix.tdouble DoubleMatrix2D DoubleFactory2D)
-      (cern.colt.matrix.tfloat.impl SparseFloatMatrix1D)
-      (cern.jet.math.tfloat FloatFunctions)
+      (cern.colt.matrix.tdouble DoubleMatrix1D DoubleFactory1D DoubleMatrix2D DoubleFactory2D)
+      (cern.jet.math.tdouble DoubleFunctions)
       (edu.emory.mathcs.utils ConcurrencyUtils)))
 
 ;; ---- Constants ----
-(def *dense* DoubleFactory2D/dense)
+(def *dense-1d* DoubleFactory1D/dense)
+(def *dense-2d* DoubleFactory2D/dense)
 (def *dense-ops* DenseDoubleAlgebra/DEFAULT)
 
-(def *sparse* DoubleFactory2D/dense)
+(def *sparse-1d* DoubleFactory1D/sparse)
+(def *sparse-2d* DoubleFactory2D/sparse)
 (def *sparse-ops* SparseDoubleAlgebra/DEFAULT)
 
-;; ---- Vector Operations ----
+;; ---- Matrix Operations ----
 (defn subvector
    "Returns the subvector consisting of rows of v with indicies in s"
-   [v s]
-   ())
-
-;; ---- Matrix Operations ----
+   [v s] (.viewSelection v s ))
 
 (defn submatrix
-   "Returns the submatrix consisting of rows and cols of m with indicies in s"
-   [m s]
-   (let [s-ints (int-array s)]
-      (.viewSelection m s-ints s-ints)))
+   "Returns the submatrix consisting of rows and cols of m with indicies in 
+    the given collection s (repeated if necessary)"
+   ([m s]      (submatrix m s s))
+   ([m s1 s2]  (.viewSelection m (int-array s1) (int-array s2))))
 
 (defn invert
    "Returns the (pseudo-) inverse of the given matrix"
    [matrix] (.inverse *dense-ops* matrix))
+
+(defn add!
+   "Overrides and returns A <- A + B"
+   [A B] (.assign A B DoubleFunctions/plus) )
+
+(defn mult!
+   "Overrides and returns C <- alpha A x B + beta C."
+   [A B C alpha beta] (.zMult A B C alpha beta false false))
+
+;; ---- NPCA Algorithm ----
+(defn update-k 
+   "Overrides and returns K <- K + 1/m KBK"
+   [K B m]
+   (let [BK (mult! )])
+   )
