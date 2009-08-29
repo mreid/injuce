@@ -76,19 +76,19 @@
    [#^DoubleMatrix2D M] (.columns M))
 
 ;; ---- Matrix Operations ----
-;(defn subvector
-;   "Returns the subvector consisting of rows of v with indicies in s"
-;   [v s] (.viewSelection v s ))
-;
-;(defn submatrix
-;   "Returns the submatrix consisting of rows and cols of m with indicies in 
-;    the given collection s (repeated if necessary)"
-;   ([m s]      (submatrix m s s))
-;   ([m s1 s2]  (.viewSelection m (int-array s1) (int-array s2))))
+(defn subvector
+   "Returns the subvector consisting of rows of v with indicies in s"
+   [#^DoubleMatrix1D v s] (.viewSelection v s ))
 
-;(defn invert
-;   "Returns the (pseudo-) inverse of the given matrix"
-;   [matrix] (.inverse *dense-ops* matrix))
+(defn submatrix
+   "Returns the submatrix consisting of rows and cols of m with indicies in 
+    the given collection s (repeated if necessary)"
+   ([m s]      (submatrix m s s))
+   ([m s1 s2]  (.viewSelection m (int-array s1) (int-array s2))))
+
+(defn invert
+   "Returns the (pseudo-) inverse of the given matrix"
+   [matrix] (.inverse *dense-ops* matrix))
 ;
 ;(defn add!
 ;   "Overrides and returns A <- A + B"
@@ -147,7 +147,7 @@
    (.zMult A x (new-vector (matrix/size x))))
 
 (defmethod mult DoubleMatrix2D [#^DoubleMatrix2D A #^DoubleMatrix2D B]
-   (.zMult A B (new-matrix (matrix/rows B) (matrix/cols B))))
+   (.zMult A B (new-matrix (matrix/rows A) (matrix/cols B))))
 
 ;; ==== Test Objects =====
 (ns user)
@@ -164,29 +164,52 @@
       (java.io FileReader BufferedReader)))
 
 ;; ---- NPCA Algorithm ----
-(def *Y* nil)  ;; This is the numUsers x numItems data matrix to be filled
+(def *numUsers* 56554)
+(def *numItems* 123344)
+(def *Y* (sparse/new-matrix *numUsers* *numItems*))  ;; This is the numUsers x numItems data matrix to be filled
+(def *data* "/Users/mreid/data/contest.github/data.txt")
+
+(defn parse-line
+   "Returns the list [i,j] when passes a string 'i:j'"
+   [string] 
+   (let [ [_ key val] (re-matches #"(\d+):(\d+)" string)]
+		[(Integer/parseInt key) (Integer/parseInt val)]))
+
+(defn read-data
+   "Returns a sparse matrix read from user:repo data in the given filename"
+   [filename]
+   (doseq [line (-> *data* FileReader.  BufferedReader. line-seq)] 
+      (let [ [i j]   (parse-line line)]
+         (.set *Y* i j 1))))
+
+(defn observed
+   "Returns an integer array containing indicies of non-zero (observed)
+    elements of row i of the matrix Y"
+    [Y i])
+
+(defn select-matrix
+   "Returns the submatrix of M consisting of rows and columns with indicies
+    of non-zero entries of the ith row of Y"
+   [M i Y]
+   )
 ;
-;(defn select
-;   "Returns the submatrix "
-;   [])
-;
-;(defn npca
-;   "Runs the NPCA algorithm on the matrix Y for maxIter iterations"
-;   [Y maxIter]
-;   (let [m  (matrix/rows Y)
-;         K  (sparse/matrix m)]
-;      (dotimes [iter maxIter]
-;      
-;         (dotimes [i m]
-;            (let [G  (invert (select i K))]   
-;               )
-;         )
-;      
-;;         (update-k)
-;;         (update-mu)
-;      ) 
-;;      [K mu]
-;      ))
+(defn npca
+   "Runs the NPCA algorithm on the matrix Y for maxIter iterations"
+   [Y maxIter]
+   (let [m  (matrix/rows Y)
+         K  (sparse/new-matrix m)]
+      (dotimes [iter maxIter]
+      
+         (dotimes [i m]
+            (let [G  (invert (select i K))]   
+               )
+         )
+      
+;         (update-k)
+;         (update-mu)
+      ) 
+;      [K mu]
+      ))
 ;
 ;(defn update-k 
 ;   "Overrides and returns K <- K + 1/m KBK"
