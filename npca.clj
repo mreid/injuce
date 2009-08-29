@@ -134,9 +134,10 @@
    [n] (.identity *factory2d* n))
 
 ;; ---- Matrix Operations ----
-;(defn sub1
-;   "Returns a new sparse vector equal to a - b"
-;   [a b] (matrix/sub! (.copy a) b))
+(defn sub1
+   "Returns a new sparse vector equal to a - b"
+   [#^DoubleMatrix1D a #^DoubleMatrix1D b] 
+   (.assign a b DoubleFunctions/minus))
 
 (defmulti mult 
    "Returns a new sparse vector or matrix with is the product A.x"
@@ -158,12 +159,12 @@
 (def x (sparse/new-vector 3))
 (def y (sparse/new-vector 3))
 
-;(ns npca 
-;   (:import 
-;      (java.io FileReader BufferedReader)))
+(ns npca 
+   (:import 
+      (java.io FileReader BufferedReader)))
 
 ;; ---- NPCA Algorithm ----
-;(def *Y* nil)  ;; This is the numUsers x numItems data matrix to be filled
+(def *Y* nil)  ;; This is the numUsers x numItems data matrix to be filled
 ;
 ;(defn select
 ;   "Returns the submatrix "
