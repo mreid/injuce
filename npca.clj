@@ -119,6 +119,10 @@
 (def *factory2d*  DoubleFactory2D/sparse)
 (def *sparse-ops* SparseDoubleAlgebra/DEFAULT)
 
+(def *sparseness* 0.0001)
+(def *minLoadFactor* 0.1)
+(def *maxLoadFactor* 0.2)
+
 ;; ---- Matrix Constructors ----
 (defn #^DoubleMatrix1D new-vector
    "Returns a new sparse vector of dimension n"
@@ -126,7 +130,8 @@
 
 (defn #^DoubleMatrix2D new-matrix
    "Returns a new sparse matrix of dimension m x n"
-   ([m n]   (SparseDoubleMatrix2D. m n))
+   ([m n]   (SparseDoubleMatrix2D. m n 
+               (int (* *sparseness* m n)) *minLoadFactor* *maxLoadFactor*))
    ([n]     (new-matrix n n)))   
 
 (defn new-identity
@@ -164,6 +169,9 @@
       (java.io FileReader BufferedReader)))
 
 ;; ---- NPCA Algorithm ----
+;; NOTE: Currently a big problem with Parallel Colt is that
+;;       it cannot handle a matrix of 56000 x 123000 since its
+;;       size (i.e., number of elements) is bigger than Integer/MAX_INTEGER
 (def *numUsers* 56554)
 (def *numItems* 123344)
 (def *Y* (sparse/new-matrix *numUsers* *numItems*))  ;; This is the numUsers x numItems data matrix to be filled
