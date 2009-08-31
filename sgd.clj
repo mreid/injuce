@@ -96,7 +96,7 @@
 	"Returns the projection of a parameter vector w onto the ball of radius r"
 	[w r] 
 	(let [n (norm w)]
-		(if (> n 0) (scale (min (/ r (norm w)) 1) w)) w))
+		(if (> n r) (scale (min (/ r (norm w)) 1) w)) w))
 
 ;; ---- Parsing ----
 
