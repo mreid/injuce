@@ -61,42 +61,43 @@
 (defn create
    "Returns a sparse vector created from a list of int/float pairs [k v]"
    [m] 
-   (let [v (SparseFloatMatrix1D. *max-features*)] 
+   (let [v (DenseFloatMatrix1D. *max-features*)] 
       (do 
          (doseq [[i f] m] (.set v i f))
          v)))
          
 (defn cardinality
    "Returns the number of non-zero elements in the given sparse vector"
-   [v] (. v cardinality))
+   [v] (.cardinality v))
 
 ;(defn add
 ;  "Returns the sparse sum of two sparse vectors x y"
 ;  [x y] (merge-with + x y))
 
-(defn add [x y] (. x assign y FloatFunctions/plus) )
+(defn add [x y] (.assign x y FloatFunctions/plus))
 
 ;(defn inner
 ;  "Computes the inner product of the sparse vectors (hashes) x and y"
 ;  [x y] (reduce + (map #(* (get x % 0) (get y % 0)) (keys y))))
 
-(defn inner [x y] (. x zDotProduct y))
+(defn inner [x y] (.zDotProduct y x))
 
 (defn norm
    "Returns the l_2 norm of the (sparse) vector v"
    [v] (Math/sqrt (inner v v)))
 
-(defn scale [a v] (. v assign (FloatFunctions/mult a)))
+(defn scale [a v] (.assign v (FloatFunctions/mult a)))
 
 ;(defn scale
 ;  "Returns the scalar product of the sparse vector v by the scalar a"
 ;  [a v] (zipmap (keys v) (map * (vals v) (repeat a))))
 
 (defn project
-   "Returns the projection of a parameter vector w onto the ball of radius r"
-   [w r] 
-   (let [n (norm w)]
-      (if (> n 0) (scale (min (/ r (norm w)) 1) w)) w))
+   "Scales x so it is inside the ball of radius r"
+   [x r] 
+   (let [n (norm x)]
+      (if (> n r) 
+         (scale (/ r n) x))))
 
 ;; ---- Parsing ----
 
@@ -117,66 +118,68 @@
       {:y (Float/parseFloat label), :x (parse-features features)}))
 
 ;; ---- Training ----
+;; ---- Global variables for training ----
+(def w      (SparseFloatMatrix1D. *max-features*))
+(def step   (atom 1))
+(def errors (atom 0))
+(def lambda (atom 0.0001))
+
 (defn hinge-loss
    "Returns the hinge loss of the weight vector w on the given example"
-   [w example] (max 0 (- 1 (* (:y example) (inner w (:x example))))))
+   [example] (max 0 (- 1 (* (:y example) (inner w (:x example))))))
    
 (defn correct
    "Returns a corrected version of the weight vector w"
-   [w example t lambda]
+   [example]
    (let [x   (:x example)
-        y   (:y example)
-        w1  (scale (- 1 (/ 1 t)) w)
-        eta (/ 1 (* lambda t))
-        r   (/ 1 (Math/sqrt lambda))]
-      (project (add w1 (scale (* eta y) x)) r)))
+         y   (:y example)
+         eta (/ 1 (* @lambda @step))
+         r   (/ 1 (Math/sqrt @lambda))]
+      (do
+;      (println "Before:" (cardinality w) "--" (norm w))
+         (scale (- 1 (/ 1 @step)) w)
+         (scale (* eta y) x)
+         (add w x)
+         (project w r)
+;      (println "After:" (cardinality w)  "--" (norm w))
+      )))
 
 (defn report
    "Prints stats about the given model to STDERR at the specified interval"
-   [model interval]
-   (if (zero? (mod (:step model) interval))
-      (let [t      (:step model)
-           size   (cardinality (:w model))
-           errors (:errors model) ]
-         (binding [*out* *err*]
-            (println "Step:" t 
-             "\t Features in w =" size 
-             "\t Errors =" errors 
-             "\t Accuracy =" (/ (float errors) t))))))
+   [interval]
+   (if (zero? (mod @step interval))
+      (binding [*out* *err*]
+         (println 
+            "Step:" @step 
+             "\t Features in w =" (cardinality w) 
+             "\t Errors =" @errors 
+             "\t Accuracy =" (/ (float @errors) @step)))))
 
 (defn update
-   "Returns an updated model by taking the last model, the next training 
-    and applying the Pegasos update step"
-   [model example]
-   (let [lambda (:lambda model)
-        t      (:step   model)
-        w      (:w      model)
-        errors (:errors model)
-        error  (> (hinge-loss w example) 0)]
-      (do 
-         (report model 100)
-         { :w      (if error (correct w example t lambda) w), 
-           :lambda lambda, 
-           :step   (inc t), 
-           :errors (if error (inc errors) errors)} )))
+   "Updates the model by taking an example and applying the Pegasos update step"
+   [example]
+   (do 
+      (if (> (hinge-loss example) 0) 
+         (do 
+            (correct example)
+            (reset! errors (inc @errors))))
+      (reset! step (inc @step))))
 
 (defn train
    "Returns a model trained from the initial model on the given examples"
-   [initial examples]
-   (reduce update initial examples))
+   [examples]
+   (doseq [example examples]
+      (update example)
+      (report 100)))
 
 ;; ---- Main method ----
 
 (defn main
    "Trains a model from the examples and prints out its weights"
    []
-   (let [start {  :lambda  0.0001, 
-                  :step    1, 
-                  :w       (DenseFloatMatrix1D. *max-features*), 
-                  :errors  0} 
-        examples  (map parse (-> *in* BufferedReader. line-seq)) 
-        model     (train start examples)]
-      (println (:w model))))
+   (let [examples  (map parse (-> *in* BufferedReader. line-seq))]
+      (do
+         (train examples))))
 
 (set! *warn-on-reflection* true)
 (ConcurrencyUtils/setNumberOfThreads 1) ; Done to stop time wasted in Futures
