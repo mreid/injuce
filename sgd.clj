@@ -49,6 +49,27 @@
 ;
 ; The suggested value of lambda for this dataset is 0.0001.
 
+; Notes
+; -----
+; Current version (2009-09-01) uses atoms and global variables to do inplace 
+; rather than the older functional style updates. This is because the old 
+; version was chewing way to much memory. I suspect that even though Clojure has
+; some nice tricks to ensure deltas to existing things like maps do not cost
+; too much, they cannot handle the amount of modification an online SGD needs.
+
+; The older version also had some nasty bugs:
+;  1. The projection step was never happening
+;  2. The scaling of w in the correction step was wrong
+;  3. No bias term
+
+; These are now fixed (hopefully).
+
+; The current version (2009-09-01) is still surprisingly memory-hungry - though
+; much less than earlier version. I suspect this is because all the examples 
+; use new hashes/SparseDoubleMatrix1D instances.
+
+; TODO: Use a single sparse vector for all example and just clear/replace
+
 (ns sgd (:import 
       (java.io FileReader BufferedReader)
       (cern.colt.matrix.tfloat.impl DenseFloatMatrix1D SparseFloatMatrix1D)
@@ -61,36 +82,25 @@
 (defn create
    "Returns a sparse vector created from a list of int/float pairs [k v]"
    [m] 
-   (let [v (DenseFloatMatrix1D. *max-features*)] 
+   (let [v (SparseFloatMatrix1D. (inc *max-features*))] 
       (do 
          (doseq [[i f] m] (.set v i f))
+         (.set v *max-features* 1.0)      ; Bias term
          v)))
          
 (defn cardinality
    "Returns the number of non-zero elements in the given sparse vector"
    [v] (.cardinality v))
 
-;(defn add
-;  "Returns the sparse sum of two sparse vectors x y"
-;  [x y] (merge-with + x y))
-
 (defn add [x y] (.assign x y FloatFunctions/plus))
 
-;(defn inner
-;  "Computes the inner product of the sparse vectors (hashes) x and y"
-;  [x y] (reduce + (map #(* (get x % 0) (get y % 0)) (keys y))))
-
-(defn inner [x y] (.zDotProduct y x))
+(defn inner [x y] (.zDotProduct x y))
 
 (defn norm
    "Returns the l_2 norm of the (sparse) vector v"
    [v] (Math/sqrt (inner v v)))
 
 (defn scale [a v] (.assign v (FloatFunctions/mult a)))
-
-;(defn scale
-;  "Returns the scalar product of the sparse vector v by the scalar a"
-;  [a v] (zipmap (keys v) (map * (vals v) (repeat a))))
 
 (defn project
 <<<<<<< HEAD:sgd.clj
@@ -115,7 +125,6 @@
 
 (defn parse-features
    [string]
-   
    (create (map parse-feature (re-seq #"[^\s]+" string))))
 
 (defn parse
@@ -126,7 +135,7 @@
 
 ;; ---- Training ----
 ;; ---- Global variables for training ----
-(def w      (SparseFloatMatrix1D. *max-features*))
+(def w      (DenseFloatMatrix1D. (inc *max-features*)))  ; +1 for bias term
 (def step   (atom 1))
 (def errors (atom 0))
 (def lambda (atom 0.0001))
@@ -143,12 +152,10 @@
          eta (/ 1 (* @lambda @step))
          r   (/ 1 (Math/sqrt @lambda))]
       (do
-;      (println "Before:" (cardinality w) "--" (norm w))
-         (scale (- 1 (/ 1 @step)) w)
+         (scale (/ (- @step 1) @step) w)
          (scale (* eta y) x)
          (add w x)
          (project w r)
-;      (println "After:" (cardinality w)  "--" (norm w))
       )))
 
 (defn report
@@ -165,28 +172,27 @@
 (defn update
    "Updates the model by taking an example and applying the Pegasos update step"
    [example]
-   (do 
-      (if (> (hinge-loss example) 0) 
-         (do 
-            (correct example)
-            (reset! errors (inc @errors))))
-      (reset! step (inc @step))))
+   (let [loss (hinge-loss example)]
+      (do 
+         (if (> loss 0) 
+            (do 
+               (correct example)
+               (reset! errors (inc @errors))))
+         (reset! step (inc @step)))))
 
 (defn train
    "Returns a model trained from the initial model on the given examples"
    [examples]
    (doseq [example examples]
       (update example)
-      (report 100)))
+      (report 1000)))
 
 ;; ---- Main method ----
 
 (defn main
    "Trains a model from the examples and prints out its weights"
    []
-   (let [examples  (map parse (-> *in* BufferedReader. line-seq))]
-      (do
-         (train examples))))
+   (train (map parse (-> *in* BufferedReader. line-seq))))
 
 (set! *warn-on-reflection* true)
 (ConcurrencyUtils/setNumberOfThreads 1) ; Done to stop time wasted in Futures
