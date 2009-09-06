@@ -68,7 +68,12 @@
 ; much less than earlier version. I suspect this is because all the examples 
 ; use new hashes/SparseDoubleMatrix1D instances.
 
+; 2009-09-06: Changed (map parse ...) into a while loop that read from *in*
+;             On train2000 data set, new version uses a constant 25Mb while 
+;             older version steadily grew to 30Mb. 
+
 ; TODO: Use a single sparse vector for all example and just clear/replace
+; TODO: Test while loop reading version on full data set.
 
 (ns sgd (:import 
       (java.io FileReader BufferedReader)
@@ -174,6 +179,7 @@
          (reset! step (inc @step)))))
 
 (defn train2
+   "More memory efficient version of train"
    []
    (while (.ready *in*)
       (update (parse (read-line)))
@@ -191,8 +197,8 @@
 (defn main
    "Trains a model from the examples and prints out its weights"
    []
-;;    (train (map parse (-> *in* BufferedReader. line-seq))))
-   (train2))
+;;     (train (map parse (-> *in* BufferedReader. line-seq))))
+    (train2))
 
 (set! *warn-on-reflection* true)
 (ConcurrencyUtils/setNumberOfThreads 1) ; Done to stop time wasted in Futures
