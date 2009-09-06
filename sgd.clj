@@ -103,18 +103,11 @@
 (defn scale [a v] (.assign v (FloatFunctions/mult a)))
 
 (defn project
-<<<<<<< HEAD:sgd.clj
-	"Returns the projection of a parameter vector w onto the ball of radius r"
-	[w r] 
-	(let [n (norm w)]
-		(if (> n r) (scale (min (/ r (norm w)) 1) w)) w))
-=======
    "Scales x so it is inside the ball of radius r"
    [x r] 
    (let [n (norm x)]
       (if (> n r) 
          (scale (/ r n) x))))
->>>>>>> 5b84303ad0927ade033430418390f5ec942cf1d7:sgd.clj
 
 ;; ---- Parsing ----
 
@@ -180,6 +173,12 @@
                (reset! errors (inc @errors))))
          (reset! step (inc @step)))))
 
+(defn train2
+   []
+   (while (.ready *in*)
+      (update (parse (read-line)))
+      (report 1000)))
+
 (defn train
    "Returns a model trained from the initial model on the given examples"
    [examples]
@@ -192,7 +191,8 @@
 (defn main
    "Trains a model from the examples and prints out its weights"
    []
-   (train (map parse (-> *in* BufferedReader. line-seq))))
+;;    (train (map parse (-> *in* BufferedReader. line-seq))))
+   (train2))
 
 (set! *warn-on-reflection* true)
 (ConcurrencyUtils/setNumberOfThreads 1) ; Done to stop time wasted in Futures
