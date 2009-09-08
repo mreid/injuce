@@ -75,8 +75,15 @@
 ;             On train2000 data set, new version uses a constant 25Mb while 
 ;             older version steadily grew to 30Mb. 
 
-; TODO: Use a single sparse vector for all example and just clear/replace
-; TODO: Test while loop reading version on full data set.
+; 2009-09-08: Current version now behaves very similarly to Bottou's SVMSGD.
+;             Did this to track down problem causing lack of convergence.
+;             Turns out the problem was that I was counting an error when
+;             the loss was positive instead of when the margin was positive
+;             which was causing a drastic overcount of the error.
+
+; TODO: See if the entire data set can be stored in memory as sparse vectors.
+; TODO: Now that the error assessment is fixed, try converting back to more
+;       functional style and go for speed.
 
 (ns sgd (:import 
       (java.io FileReader BufferedReader)
@@ -90,10 +97,9 @@
 (defn create
    "Returns a sparse vector created from a list of int/float pairs [k v]"
    [m] 
-   (let [v (SparseFloatMatrix1D. (inc *max-features*))] 
+   (let [v (SparseFloatMatrix1D. *max-features*)] 
       (do 
          (doseq [[i f] m] (.set v i f))
-         (.set v *max-features* 0.01)      ; Bias term
          v)))
          
 (defn cardinality
@@ -136,19 +142,24 @@
 
 ;; ---- Training ----
 ;; ---- Global variables for training ----
-(def w      (DenseFloatMatrix1D. (inc *max-features*)))  ; +1 for bias term
+(def w      (DenseFloatMatrix1D. *max-features*))
+(def bias   (atom 0.0))
 (def errors (atom 0))
 (def lambda (atom 0.0001))
-(def step   (atom 1))
+(def step   (atom 0))
 
 ;; Offset for time step based on code in Bottou's svmsgd.
 (def eta0   (Math/sqrt (/ 1 (Math/sqrt @lambda))))
 (def offset (/ 1 (* eta0 @lambda)))
 ;(def offset )
 
+(defn margin
+   "Returns the margin y.(<w,x> + bias)"
+   [example] (* (:y example) (+ (inner w (:x example)) @bias)))
+
 (defn hinge-loss
-   "Returns the hinge loss of the weight vector w on the given example"
-   [example] (max 0 (- 1 (* (:y example) (inner w (:x example))))))
+   "Returns the hinge loss for the margin value z"
+   [z] (max 0 (- 1 z)))
    
 (defn correct
    "Returns a corrected version of the weight vector w"
@@ -162,6 +173,7 @@
          (scale s w)
          (scale (* eta y) x)
          (add w x)
+         (reset! bias (+ @bias (* eta y 0.01)))
 ;         (project w r)
       )))
 
@@ -175,30 +187,32 @@
              "\t Features in w =" (cardinality w)
              "\t |w| =" (norm w)      
              "\t Errors =" @errors 
-             "\t Accuracy =" (/ (float @errors) @step)))))
+             "\t Cumm. Acc. =" (- 1 (/ (float @errors) (inc @step)))))))
 
 (defn update
    "Updates the model by taking an example and applying the Pegasos update step"
    [example]
-   (let [loss (hinge-loss example)]
+   (let [z (margin example)]
       (do 
-         (if (> loss 0) 
+;         (prn (.elements (:x example)))
+;         (println (.elements (SparseFloatMatrix1D. (.toArray w))))
+;         (println "----- t = " (+ @step offset) "-----")
+;         (println "<w,x> =" (inner w (:x example)))
+;         (println "Margin =" (margin example))
+         (report 1000)
+         (if (> (hinge-loss z) 0)
             (do 
-               (correct example)
-               (reset! errors (inc @errors))))
+               (if (<= z 0)
+                  (reset! errors (inc @errors)))
+               (correct example)))
          (reset! step (inc @step)))))
 
 (defn train
    "Parses STDIN, converting each line into an example and updating the model."
    [examples]
-   (doall (map #(do (update %) (report 1) %) examples)))
-      
-      ;(while (.ready *in*)
-      ;   (update (parse (read-line)))
-      ;   (report 1000))
-      ;(prn w)))
+   (doall (map #(do (update %) %) examples)))
 
-(defn err [example] (if (> (hinge-loss example) 0) 1 0))
+(defn err [example] (if (<= (margin example) 0) 1 0))
 
 (defn testmodel
    "Applies the model w to the given examples and calculates the error"
@@ -211,12 +225,14 @@
    "Trains a model from the examples and prints out its weights"
    [] 
    ;(train (take 1000 (map parse (-> *in* BufferedReader. line-seq)))))
-   (let [ all  (take 10000 (map parse (-> *in* BufferedReader. line-seq)))
-          [trainexs testexs] (split-at 9000 all)]
+   (let [ all (map parse (-> *in* BufferedReader. line-seq)) ]
       (do
-         (train trainexs)
-         (testmodel testexs))))
+         (time (train all))
+         (/ (testmodel all) (count all))
+      )
+   )
+)
 
 (set! *warn-on-reflection* true)
 (ConcurrencyUtils/setNumberOfThreads 1) ; Done to stop time wasted in Futures
-(println (time (main)))
+(println "Test error:" (* (main) 100.0) "%")
