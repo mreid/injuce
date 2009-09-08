@@ -93,7 +93,7 @@
    (let [v (SparseFloatMatrix1D. (inc *max-features*))] 
       (do 
          (doseq [[i f] m] (.set v i f))
-         (.set v *max-features* 1.0)      ; Bias term
+         (.set v *max-features* 0.01)      ; Bias term
          v)))
          
 (defn cardinality
@@ -141,6 +141,11 @@
 (def lambda (atom 0.0001))
 (def step   (atom 1))
 
+;; Offset for time step based on code in Bottou's svmsgd.
+(def eta0   (Math/sqrt (/ 1 (Math/sqrt @lambda))))
+(def offset (/ 1 (* eta0 @lambda)))
+;(def offset )
+
 (defn hinge-loss
    "Returns the hinge loss of the weight vector w on the given example"
    [example] (max 0 (- 1 (* (:y example) (inner w (:x example))))))
@@ -148,15 +153,16 @@
 (defn correct
    "Returns a corrected version of the weight vector w"
    [example]
-   (let [x   (:x example)
+   (let [x   (.copy (:x example))
          y   (:y example)
-         eta (/ 1 (* @lambda @step))
+         eta (/ 1 (* @lambda (+ @step offset)))
+         s   (- 1 (* eta @lambda))
          r   (/ 1 (Math/sqrt @lambda))]
       (do
-         (scale (/ (- @step 1) @step) w)
+         (scale s w)
          (scale (* eta y) x)
          (add w x)
-         (project w r)
+;         (project w r)
       )))
 
 (defn report
@@ -166,7 +172,8 @@
       (binding [*out* *err*]
          (println 
             "Step:" @step 
-             "\t Features in w =" (cardinality w) 
+             "\t Features in w =" (cardinality w)
+             "\t |w| =" (norm w)      
              "\t Errors =" @errors 
              "\t Accuracy =" (/ (float @errors) @step)))))
 
@@ -183,16 +190,32 @@
 
 (defn train
    "Parses STDIN, converting each line into an example and updating the model."
-   [] 
-   (while (.ready *in*)
-      (update (parse (read-line)))
-      (report 1000)))
+   [examples]
+   (doall (map #(do (update %) (report 1) %) examples)))
+      
+      ;(while (.ready *in*)
+      ;   (update (parse (read-line)))
+      ;   (report 1000))
+      ;(prn w)))
+
+(defn err [example] (if (> (hinge-loss example) 0) 1 0))
+
+(defn testmodel
+   "Applies the model w to the given examples and calculates the error"
+   [examples]
+   (reduce + (map #(err %) examples)))
 
 ;; ---- Main method ----
 
 (defn main
    "Trains a model from the examples and prints out its weights"
-   [] (train))
+   [] 
+   ;(train (take 1000 (map parse (-> *in* BufferedReader. line-seq)))))
+   (let [ all  (take 10000 (map parse (-> *in* BufferedReader. line-seq)))
+          [trainexs testexs] (split-at 9000 all)]
+      (do
+         (train trainexs)
+         (testmodel testexs))))
 
 (set! *warn-on-reflection* true)
 (ConcurrencyUtils/setNumberOfThreads 1) ; Done to stop time wasted in Futures
