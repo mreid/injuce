@@ -86,7 +86,7 @@
 ;       functional style and go for speed.
 
 (ns sgd (:import 
-      (java.io FileReader BufferedReader)
+      (java.io FileReader BufferedReader Reader)
       (cern.colt.matrix.tfloat.impl DenseFloatMatrix1D SparseFloatMatrix1D)
       (cern.jet.math.tfloat FloatFunctions)
       (edu.emory.mathcs.utils ConcurrencyUtils)))
@@ -151,7 +151,6 @@
 ;; Offset for time step based on code in Bottou's svmsgd.
 (def eta0   (Math/sqrt (/ 1 (Math/sqrt @lambda))))
 (def offset (/ 1 (* eta0 @lambda)))
-;(def offset )
 
 (defn margin
    "Returns the margin y.(<w,x> + bias)"
@@ -164,7 +163,7 @@
 (defn correct
    "Returns a corrected version of the weight vector w"
    [example]
-   (let [x   (.copy (:x example))
+   (let [x   (:x example)
          y   (:y example)
          eta (/ 1 (* @lambda (+ @step offset)))
          s   (- 1 (* eta @lambda))
@@ -194,16 +193,10 @@
    [example]
    (let [z (margin example)]
       (do 
-;         (prn (.elements (:x example)))
-;         (println (.elements (SparseFloatMatrix1D. (.toArray w))))
-;         (println "----- t = " (+ @step offset) "-----")
-;         (println "<w,x> =" (inner w (:x example)))
-;         (println "Margin =" (margin example))
          (report 1000)
          (if (> (hinge-loss z) 0)
             (do 
-               (if (<= z 0)
-                  (reset! errors (inc @errors)))
+               (if (<= z 0) (reset! errors (inc @errors)))
                (correct example)))
          (reset! step (inc @step)))))
 
@@ -219,20 +212,24 @@
    [examples]
    (reduce + (map #(err %) examples)))
 
-;; ---- Main method ----
-
-(defn main
-   "Trains a model from the examples and prints out its weights"
-   [] 
-   ;(train (take 1000 (map parse (-> *in* BufferedReader. line-seq)))))
-   (let [ all (map parse (-> *in* BufferedReader. line-seq)) ]
-      (do
-         (time (train all))
-         (/ (testmodel all) (count all))
-      )
-   )
-)
-
+;; ---- Main ----
+;; Execute the program
 (set! *warn-on-reflection* true)
 (ConcurrencyUtils/setNumberOfThreads 1) ; Done to stop time wasted in Futures
-(println "Test error:" (* (main) 100.0) "%")
+(def test-set (atom []))
+
+(if (== 2 (count *command-line-args*))
+   (do
+      (let [test-size (Integer/parseInt (nth *command-line-args* 1))]
+         (println "Training (using first" test-size "examples for testing)...")
+         (time 
+            (while (.ready #^Reader *in*)
+               (let [example (parse (read-line))]
+                  (if (>= test-size (count @test-set))
+                     (swap! test-set conj example) ; Save a test example or
+                     (update example)))))          ; ... update the model
+         (println "...completed!")
+         (println "Training error rate =" (* (/ @errors @step) 100.0) "%")
+         (println "Testing on first" test-size "examples...")
+         (let [test-errors (testmodel @test-set)]
+            (println "Test Error Rate: " (* (/ test-errors test-size) 100.0) "%")))))
