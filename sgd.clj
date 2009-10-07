@@ -86,42 +86,47 @@
 ;       functional style and go for speed.
 
 (ns sgd (:import 
-      (java.io FileReader BufferedReader Reader)
-      (cern.colt.matrix.tfloat.impl DenseFloatMatrix1D SparseFloatMatrix1D)
-      (cern.jet.math.tfloat FloatFunctions)
-      (edu.emory.mathcs.utils ConcurrencyUtils)))
+      (java.io FileReader BufferedReader Reader)))
 
 ;; ---- Sparse Vector Operations ----
 (def *max-features* 47153)
 
-(defn create
-   "Returns a sparse vector created from a list of int/float pairs [k v]"
-   [m] 
-   (let [v (SparseFloatMatrix1D. *max-features*)] 
-      (do 
-         (doseq [[i f] m] (.set v i f))
-         v)))
-         
 (defn cardinality
    "Returns the number of non-zero elements in the given sparse vector"
-   [v] (.cardinality v))
+   [v] (count v))
 
-(defn add [x y] (.assign x y FloatFunctions/plus))
+(defn add
+   "Returns the sparse sum of two sparse vectors x and y" 
+   [x y] (merge-with + x y))
 
-(defn inner [x y] (.zDotProduct x y))
+(defn inner
+   "Returns the inner product of the vectors x and y"
+   [x y]
+   (reduce + (map #(* (get x % 0) (get y % 0)) (keys y))))
 
 (defn norm
    "Returns the l_2 norm of the (sparse) vector v"
    [v] (Math/sqrt (inner v v)))
 
-(defn scale [a v] (.assign v (FloatFunctions/mult a)))
+(defn pointwise
+   "Returns the vector resulting from applying f to the values in v"
+   [f v] 
+   (reduce
+      ; Anonymous function to add [key f(val)] to result map
+      (fn [result entry] (assoc result (key entry) (f (val entry))))
+      {} v))
+
+(defn scale 
+   "Returns the vector of v that is scaled by the float a"
+   [a v] (pointwise #(* a %) v))
 
 (defn project
    "Scales x so it is inside the ball of radius r"
    [x r] 
    (let [n (norm x)]
       (if (> n r) 
-         (scale (/ r n) x))))
+         (scale (/ r n) 
+         x))))
 
 ;; ---- Parsing ----
 
@@ -141,41 +146,97 @@
       {:y (Float/parseFloat label), :x (parse-features features)}))
 
 ;; ---- Training ----
+(defn correct
+   "Returns a corrected version of the weight vector w"
+   [w example t lambda]
+   (let [x        (:x example)
+         y        (:y example)
+         eta (/ 1 (* lambda t))
+         s   (- 1 (* eta lambda))
+         r   (/ 1 (Math/sqrt lambda))
+         w1  (scale (- 1 (/ 1 t)) w)
+         ]
+      (project (add w1 (scale (* eta y) x)) r)))
+
+;(defn correct
+;   "Returns a corrected version of the weight vector w"
+;   [example]
+;   (let [x   (:x example)
+;         y   (:y example)
+;         eta (/ 1 (* @lambda (+ @step offset)))
+;         s   (- 1 (* eta @lambda))
+;         r   (/ 1 (Math/sqrt @lambda))]
+;      (do
+;         (scale s w)
+;         (scale (* eta y) x)
+;         (add w x)
+;         (reset! bias (+ @bias (* eta y 0.01)))
+;;         (project w r)
+;      )))
+
+
+(defn report
+   "Prints stats about the given model to STDERR at the specified interval"
+   [model interval]
+   (if (zero? (mod (:step model) interval))
+      (let [t      (:step model)
+           size   (cardinality (:w model))
+           errors (:errors model) ]
+         (binding [*out* *err*]
+            (println "Step:" t 
+             "\t Features in w =" size 
+             "\t Errors =" errors 
+             "\t Accuracy =" (/ (float errors) t))))))
+ 
+(defn update
+   "Returns an updated model by taking the last model, the next training 
+    and applying the Pegasos update step"
+   [model example]
+   (let [lambda (:lambda model)
+        t      (:step   model)
+        w      (:w      model)
+        errors (:errors model)
+        error  (> (hinge-loss w example) 0)]
+      (do 
+         (report model 100)
+         { :w      (if error (correct w example t lambda) w), 
+           :lambda lambda, 
+           :step   (inc t), 
+           :errors (if error (inc errors) errors)} )))
+ 
+(defn train
+   "Returns a model trained from the initial model on the given examples"
+   [initial examples]
+   (reduce update initial examples))
+ 
+;; ---- Main method ----
+ 
+(defn main
+	"Trains a model from the examples and prints out its weights"
+	[]
+	(let [start 	{:lambda 0.0001, :step 1, :w (create {}), :errors 0} 
+		  examples 	(map parse (-> *in* BufferedReader. line-seq)) 
+		  model     (train start examples)]
+		(println (:w model))))
 ;; ---- Global variables for training ----
-(def w      (DenseFloatMatrix1D. *max-features*))
-(def bias   (atom 0.0))
-(def errors (atom 0))
-(def lambda (atom 0.0001))
-(def step   (atom 0))
+;(def w      (DenseFloatMatrix1D. *max-features*))
+;(def bias   (atom 0.0))
+;(def errors (atom 0))
+;(def lambda (atom 0.0001))
+;(def step   (atom 0))
 
 ;; Offset for time step based on code in Bottou's svmsgd.
-(def eta0   (Math/sqrt (/ 1 (Math/sqrt @lambda))))
-(def offset (/ 1 (* eta0 @lambda)))
+;(def eta0   (Math/sqrt (/ 1 (Math/sqrt @lambda))))
+;(def offset (/ 1 (* eta0 @lambda)))
 
 (defn margin
    "Returns the margin y.(<w,x> + bias)"
-   [example] (* (:y example) (+ (inner w (:x example)) @bias)))
+   [example] (* (:y example) (inner w (:x example))))
 
 (defn hinge-loss
    "Returns the hinge loss for the margin value z"
    [z] (max 0 (- 1 z)))
    
-(defn correct
-   "Returns a corrected version of the weight vector w"
-   [example]
-   (let [x   (:x example)
-         y   (:y example)
-         eta (/ 1 (* @lambda (+ @step offset)))
-         s   (- 1 (* eta @lambda))
-         r   (/ 1 (Math/sqrt @lambda))]
-      (do
-         (scale s w)
-         (scale (* eta y) x)
-         (add w x)
-         (reset! bias (+ @bias (* eta y 0.01)))
-;         (project w r)
-      )))
-
 (defn report
    "Prints stats about the given model to STDERR at the specified interval"
    [interval]
