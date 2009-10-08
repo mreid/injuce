@@ -56,10 +56,13 @@
    (prof :correct
       (let [eta    (rate t lambda)
             dloss  (loss/deriv loss-fn y v)
-            grad   (add (scale lambda w) (scale dloss x))
-            w-new  (add w (scale (- eta) grad))]
+            w-new  (add
+                     (scale (- 1 (* eta lambda)) w)
+                     (scale (* (- eta) dloss) x))  ]
          (if (zero? (mod t proj-rate))
-            (project w-new (radius lambda))
+            (project
+               w-new
+               (radius lambda))
             w-new))))
 
 (defn step

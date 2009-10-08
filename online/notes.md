@@ -34,3 +34,21 @@ Running the following at the top level:
 	  parse    822927     28000  93411000      2000  1645854000
 	project   7660000   3414000  16781000         5  38300000
 	  scale   2086476     15000  141573000      1117  2330594000
+
+### Change to `inner` so it destructures the map into `[k v]` 
+
+	   Name      mean       min       max     count       sum
+	    add    129289     29000   5447000       557  72014000
+	correct   4408249    674000  147886000       557  2455395000
+	 dhinge      8463      6000    268000       557   4714000
+	  hinge      3049      1000    256000      1557   4748000
+	  inner    103973      7000  13144000      2005  208466000
+	   norm   5306800   2422000  13169000         5  26534000
+	  parse    893034     33000  93633000      2000  1786069000
+	project   6854800   3982000  13177000         5  34274000
+	  scale   2071798     15000  147741000      1117  2314199000
+	
+
+Other changes
+-------------
+* Changed `assoc` call in `vec/pointwise` to `conj` and noticed no improvement.

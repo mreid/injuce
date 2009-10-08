@@ -10,20 +10,27 @@
    [v] (count v))
 
 (defn add
-   "Returns the sparse sum of two sparse vectors x and y" 
+   "Returns the sparse sum of two sparse vectors x and y.
+    (More efficient if sparsest vector is y)" 
    [x y] 
    (prof :add 
       (merge-with + x y)))
 
 (defn inner
-   "Returns the inner product of the vectors x and y"
+   "Returns the inner product of the vectors x and y.
+    (More efficient if sparsest vector is y)"
    [x y]
    (prof :inner 
-      (reduce + (map #(* (get x % 0) (get y % 0)) (keys y)))))
+      (reduce + 
+         (map 
+            (fn [[k v]] (* (get x k 0) v))
+            y))))
 
 (defn norm
    "Returns the l_2 norm of the (sparse) vector v"
-   [v] (Math/sqrt (inner v v)))
+   [v] 
+   (prof :norm
+      (Math/sqrt (inner v v))))
 
 (defn pointwise
    "Returns the vector resulting from applying f to the values in x"
