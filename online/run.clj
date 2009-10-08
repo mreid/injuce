@@ -37,10 +37,11 @@
 ;   sparse/dense updates. 
 
 (ns run
+   (:use (clojure.contrib profile))
    (:require data learner sgd))
 
-(time
-   (println 
+(println
+   (profile
       (learner/train 
          (sgd/make-learner 0.001 100) 
-         (take 10000 (data/stdin)))))
+         (take 2000 (data/stdin)))))

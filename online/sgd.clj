@@ -27,7 +27,7 @@
 ;     Output w_{T+1}
 
 (ns sgd
-   (:use vec learner)
+   (:use vec learner (clojure.contrib profile))
    (:require loss))
 
 ;; Offset for time step based on code in Bottou's svmsgd.
@@ -53,13 +53,14 @@
 (defn correct
    "Returns a corrected version of the weight vector w"
    [w v x y t loss-fn lambda proj-rate]
-   (let [eta    (rate t lambda)
-         dloss  (loss/deriv loss-fn y v)
-         grad   (add (scale lambda w) (scale dloss x))
-         w-new  (add w (scale (- eta) grad))]
-      (if (zero? (mod t proj-rate))
-         (project w-new (radius lambda))
-         w-new)))
+   (prof :correct
+      (let [eta    (rate t lambda)
+            dloss  (loss/deriv loss-fn y v)
+            grad   (add (scale lambda w) (scale dloss x))
+            w-new  (add w (scale (- eta) grad))]
+         (if (zero? (mod t proj-rate))
+            (project w-new (radius lambda))
+            w-new))))
 
 (defn step
    "Returns an updated model by taking the last model, the next training 

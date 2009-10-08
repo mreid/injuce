@@ -6,7 +6,8 @@
 (ns data
    (:import 
       (java.io FileInputStream InputStreamReader BufferedReader)
-      (java.util.zip GZIPInputStream)))
+      (java.util.zip GZIPInputStream))
+   (:use (clojure.contrib profile)))
 
 ;; ---- Parsing ----
 ;; TODO: Make this faster by removing regular expressions and building map
@@ -28,10 +29,11 @@
 (defn parse
    "Returns a map {:y label, :x sparse-feature-vector} parsed from given line"
    [line number]
-   (let [ [_ label features] (re-matches #"^(-?\d+)(.*)$" line) ]
-      { :t number 
-        :y (Float/parseFloat label) 
-        :x (parse-features features) }))
+   (prof :parse
+      (let [ [_ label features] (re-matches #"^(-?\d+)(.*)$" line) ]
+         { :t number 
+           :y (Float/parseFloat label) 
+           :x (parse-features features) })))
 
 (defn from-reader
    "Returns a lazy sequence of examples parsed from the given Reader"
