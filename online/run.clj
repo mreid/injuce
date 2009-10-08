@@ -40,8 +40,12 @@
    (:use (clojure.contrib profile))
    (:require data learner sgd))
 
-(println
-   (profile
-      (learner/train 
-         (sgd/make-learner 0.001 100) 
-         (take 2000 (data/stdin)))))
+(ns clojure.contrib.profile)
+   (def *enable-profiling* false)
+
+(ns run)
+
+(time
+   (learner/train 
+      (sgd/make-learner 0.001 100) 
+      (take 2000 (data/stdin))))
