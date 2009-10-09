@@ -22,25 +22,23 @@
 
 ; Notes
 ; -----
-; * Parsing all of the examples in the full 781,000+ data set takes 2:40 on my
-;   2.66GHz 2Gb RAM iMac
 ;
 ; * Memory uses rises quickly to around 160Mb of real memory then stablises.
 ;
 ; To Do
 ; -----
-; * Optimise gradient calculations in SGD via rearranging calls to add & scale.
+; [_] Improve the parsing speed so that lines are parsed char-by-char into maps.
 ;
-; * Improve the parsing speed so that lines are parsed char-by-char into maps.
+; [X] Optimise gradient calculations in SGD via rearranging calls to add & scale.
 ;
-; * Make the model vector in SGD dense and update vector methods to handle
+; [X] Make the model vector in SGD dense and update vector methods to handle
 ;   sparse/dense updates. 
 
 (ns run
    (:use (clojure.contrib profile)))
 
 (ns clojure.contrib.profile)
-(def *enable-profiling* true)
+(def *enable-profiling* false)
 
 (ns run
    (:require data learner sgd loss))
@@ -51,7 +49,7 @@
 
 (def *loss* loss/hinge)
 (def *lambda* 0.0001)
-(def *projection-freq* 10)
+(def *projection-freq* 1)
 
 (time
 ;   (profile
@@ -59,4 +57,4 @@
          (sgd/make-learner *loss* *lambda* *projection-freq*) 
          (take (+ *num-train* *num-test*) (data/stdin))
          *num-test*    
-         *report-freq*)) ;)
+         *report-freq*));)

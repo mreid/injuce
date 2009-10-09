@@ -35,7 +35,7 @@
 (defn from-reader
    "Returns a lazy sequence of examples parsed from the given Reader"
    [reader]
-   (map parse (-> reader BufferedReader. line-seq) (iterate inc 1)))
+   (pmap parse (-> reader BufferedReader. line-seq) (iterate inc 1)))
 
 ;; --- Small RCV Data Set - 2000 examples ----
 (def rcv-small-file "../data/train2000.dat.gz")   

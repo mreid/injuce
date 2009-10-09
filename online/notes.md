@@ -1,3 +1,14 @@
+Using Different Losses
+======================
+
+It seems hinge loss outperforms logistic as a surrogate for 0-1 loss.
+Error rates for full training set and initial 1000 as test set:
+
+* Logistic:	6.1%
+* Hinge:  	3.9%
+
+(Notes: Projection frequency = 1, Max. derivative = 10)
+
 Profiling Notes
 ===============
 

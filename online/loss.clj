@@ -6,7 +6,7 @@
 (ns loss
    (:use vec (clojure.contrib profile)))
 
-(def *max-deriv* 100000)
+(def *max-deriv* 10)
 
 (defn deriv
    "Returns the (clamped) derivative of the loss l evaluated at y v"
@@ -26,7 +26,7 @@
 
 (defn exp
    ([y v]   (prof :exp (Math/pow Math/E (- (* y v)))))
-   ([y v _] (prof :dexp (- (* y (exp y v))))))
+   ([y v _] (prof :dexp (* (- y) (exp y v)))))
 
 (defn logistic
    ([y v]   (prof :logistic  (Math/log (+ 1 (exp y v)))))
