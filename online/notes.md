@@ -89,6 +89,21 @@ Running the following at the top level:
 
 Note that, although faster, the error rate is higher as well as the number of evaluations of `add`, etc.
 
+Full Run
+--------
+After the implementation of the new `vec` library I was able to run SVM SGD with hinge loss on the entire RCV1 data set. 
+
+Settings:
+
+    Lambda                  = 0.0001
+    Projection Frequency    = 100
+    Test Set Size           = 100
+    Report Frequency        = 10000
+    
+The results:
+    
+    Elapsed Time:       413 second
+    Final Test Error:   8 / 100 
 
 Other changes
 -------------

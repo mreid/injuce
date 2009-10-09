@@ -37,16 +37,25 @@
 ;   sparse/dense updates. 
 
 (ns run
-   (:use (clojure.contrib profile))
-   (:require data learner sgd))
+   (:use (clojure.contrib profile)))
+
+(def *num-test*    100)
+(def *num-train*   800000)
+(def *report-freq* 10000)
+
+(def *lambda* 0.0001)
+(def *projection-freq* 100)
 
 (ns clojure.contrib.profile)
-   (def *enable-profiling* true)
+(def *enable-profiling* false)
 
-(ns run)
+(ns run
+   (:require data learner sgd))
 
 (time
-   (profile
+;   (profile
       (learner/train 
-         (sgd/make-learner 0.001 100) 
-         (take 50000 (data/stdin)))))
+         (sgd/make-learner *lambda* *projection-freq*) 
+         (take (+ *num-train* *num-test*) (data/stdin))
+         *num-test*    
+         *report-freq*));)
