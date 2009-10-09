@@ -1,6 +1,10 @@
 Profiling Notes
 ===============
 
+Thankfully, someone has already done the hard work of micro-benchmarking various implementation decisions:
+
+    http://gnuvince.wordpress.com/2009/05/11/clojure-performance-tips/
+
 Experiment 1
 ------------
 
@@ -47,7 +51,26 @@ Running the following at the top level:
 	  parse    893034     33000  93633000      2000  1786069000
 	project   6854800   3982000  13177000         5  34274000
 	  scale   2071798     15000  147741000      1117  2314199000
-	
+
+### Prior to new `vec` optimisations (on Work iMac)
+
+
+    Step 1000
+    {:mean 0.106, :count 1000, :total 106.0}
+       Name      mean       min       max     count       sum
+        add    136642     36000   3047000       557  76110000
+    correct   4332317    664000  156838000       557  2413101000
+     create    617012     18000  28319000      2000  1234024000
+     dhinge      7789      6000     94000       557   4339000
+      hinge      3132      1000     47000      1557   4877000
+      inner    112597      8000  10918000      2005  225757000
+       norm   4778200   2552000  10951000         5  23891000
+      parse    682077     32000  36173000      2000  1364154000
+    project   7469600   3572000  11448000         5  37348000
+      scale   2023675     19000  156687000      1117  2260446000
+    "Elapsed time: 4176.285 msecs"
+
+
 
 Other changes
 -------------

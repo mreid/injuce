@@ -92,7 +92,7 @@
       :name       (print-str 
                      "Pegasos ( lambda = " lambda 
                         ", projections = " projection-rate ")")
-      :initial    {}
+      :initial    (create [])
       :predict    predict
       :step       (make-step lambda projection-rate)
    ))
