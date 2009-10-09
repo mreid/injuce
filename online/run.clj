@@ -49,4 +49,4 @@
    (profile
       (learner/train 
          (sgd/make-learner 0.001 100) 
-         (take 2000 (data/stdin)))))
+         (take 50000 (data/stdin)))))

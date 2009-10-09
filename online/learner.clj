@@ -61,8 +61,8 @@
 (defn train
    "Returns a model trained by learner on the given examples"
    [learner examples]
-   (let [test-exs  (take 1000 examples)
-         train-exs (drop 1000 examples)
+   (let [test-exs  (take 100 examples)
+         train-exs (drop 100 examples)
          reporter  (make-reporter 1000 (:predict learner) test-exs)]
       (reduce 
          (fn [model [time example]]
