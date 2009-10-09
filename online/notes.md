@@ -70,6 +70,24 @@ Running the following at the top level:
       scale   2023675     19000  156687000      1117  2260446000
     "Elapsed time: 4176.285 msecs"
 
+### Post new (buggy) `vec` optimisations (on Work iMac)
+
+    Step 1000
+    {:mean 0.23, :count 1000, :total 230.0}
+       Name      mean       min       max     count       sum
+        add    227124     18000  13669000      1000  227124000
+    correct    268535     41000  13740000      1000  268535000
+     create    762838     23000  124879000      2001  1526440000
+     dhinge      6093      3000     53000      1000   6093000
+      hinge      1706      1000     48000      2000   3412000
+      inner    105136      9000  16164000      2000  210273000
+       norm    104400     63000    265000        10   1044000
+      parse    812102     39000  124962000      2000  1624205000
+    project    123600     68000    402000        10   1236000
+      scale      3960      1000     70000      2000   7921000
+    "Elapsed time: 2280.062 msecs"
+
+Note that, although faster, the error rate is higher as well as the number of evaluations of `add`, etc.
 
 
 Other changes
