@@ -6,9 +6,13 @@
 (ns loss
    (:use vec (clojure.contrib profile)))
 
+(def *max-deriv* 100000)
+
 (defn deriv
-   "Returns the derivative of the loss l evaluated at y v"
-   [l y v] (l y v true))
+   "Returns the (clamped) derivative of the loss l evaluated at y v"
+   [l y v] 
+   (let [d (l y v true)]
+      (if (> (Math/abs d) *max-deriv*) *max-deriv* d)))
 
 (defn hinge
    "Returns the hinge loss for the prediction v"
@@ -21,5 +25,9 @@
    ([y v _] 0))
 
 (defn exp
-   ([y v]   (Math/pow Math/E (- (* y v))))
-   ([y v _] (- (* y (exp y v)))))
+   ([y v]   (prof :exp (Math/pow Math/E (- (* y v)))))
+   ([y v _] (prof :dexp (- (* y (exp y v))))))
+
+(defn logistic
+   ([y v]   (prof :logistic  (Math/log (+ 1 (exp y v)))))
+   ([y v _] (prof :dlogistic (/ (exp y v true) (+ 1 (exp y v))) )))

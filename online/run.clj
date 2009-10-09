@@ -39,23 +39,24 @@
 (ns run
    (:use (clojure.contrib profile)))
 
-(def *num-test*    100)
+(ns clojure.contrib.profile)
+(def *enable-profiling* true)
+
+(ns run
+   (:require data learner sgd loss))
+
+(def *num-test*    1000)
 (def *num-train*   800000)
 (def *report-freq* 10000)
 
+(def *loss* loss/hinge)
 (def *lambda* 0.0001)
-(def *projection-freq* 100)
-
-(ns clojure.contrib.profile)
-(def *enable-profiling* false)
-
-(ns run
-   (:require data learner sgd))
+(def *projection-freq* 10)
 
 (time
 ;   (profile
       (learner/train 
-         (sgd/make-learner *lambda* *projection-freq*) 
+         (sgd/make-learner *loss* *lambda* *projection-freq*) 
          (take (+ *num-train* *num-test*) (data/stdin))
          *num-test*    
-         *report-freq*));)
+         *report-freq*)) ;)

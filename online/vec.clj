@@ -106,10 +106,6 @@
          (struct svec {} 0 1)
          (rescale (struct svec (:entries v) (:norm2 v) (* a (:scale v)))))))
 
-;(defn sub
-;   "Returns the vector = x - y"
-;   [x y] (add x (scale -1 y)))
-
 (defn project
    "Scales x so it is inside the ball of radius r"
    [x r] 

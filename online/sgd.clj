@@ -78,8 +78,8 @@
 
 (defn make-step
    "Returns an update function with given learning rate"
-   [lambda proj-rate]
-   (fn [w [t example]] (step w t example loss/hinge lambda proj-rate)))
+   [loss-fn lambda proj-rate]
+   (fn [w [t example]] (step w t example loss-fn lambda proj-rate)))
 
 (defn make-initial
    "Creates an initial model for an SGD run"
@@ -87,12 +87,12 @@
 
 (defn make-learner
    "Creates an SVM SGD learner with the given regularisation parameter lambda"
-   [lambda projection-rate]
+   [loss-fn lambda projection-rate]
    (struct-map learner
       :name       (print-str 
                      "Pegasos ( lambda = " lambda 
                         ", projections = " projection-rate ")")
       :initial    zero
       :predict    predict
-      :step       (make-step lambda projection-rate)
+      :step       (make-step loss-fn lambda projection-rate)
    ))
