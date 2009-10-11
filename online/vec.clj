@@ -104,7 +104,7 @@
    (prof :scale 
       (if (zero? a)
          (struct svec {} 0 1)
-         (rescale (struct svec (:entries v) (:norm2 v) (* a (:scale v)))))))
+         (struct svec (:entries v) (:norm2 v) (* a (:scale v))))))
 
 (defn project
    "Scales x so it is inside the ball of radius r"
