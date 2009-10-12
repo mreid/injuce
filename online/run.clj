@@ -49,7 +49,7 @@
 
 (def *loss* loss/hinge)
 (def *lambda* 0.0001)
-(def *projection-freq* 1)
+(def *projection-freq* 100)
 
 (time
 ;   (profile
